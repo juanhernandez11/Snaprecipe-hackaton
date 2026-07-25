@@ -3,6 +3,47 @@ import Groq from "groq-sdk";
 
 export const maxDuration = 30;
 
+function extractJSON(text: string): string | null {
+  // Remove <think>...</think> blocks if present
+  const cleaned = text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+
+  // Try to find a JSON object with "recipes" key
+  const jsonMatch = cleaned.match(/\{[\s\S]*"recipes"[\s\S]*\}/);
+  if (jsonMatch) {
+    // Try to find the balanced braces
+    let depth = 0;
+    let start = -1;
+    for (let i = 0; i < cleaned.length; i++) {
+      if (cleaned[i] === "{") {
+        if (depth === 0) start = i;
+        depth++;
+      } else if (cleaned[i] === "}") {
+        depth--;
+        if (depth === 0 && start !== -1) {
+          const candidate = cleaned.substring(start, i + 1);
+          if (candidate.includes('"recipes"')) {
+            return candidate;
+          }
+        }
+      }
+    }
+  }
+
+  // Fallback: try the whole cleaned text as JSON
+  if (cleaned.startsWith("{")) {
+    return cleaned;
+  }
+
+  // Last resort: find content between first { and last }
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    return cleaned.substring(firstBrace, lastBrace + 1);
+  }
+
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     if (!process.env.GROQ_API_KEY) {
@@ -58,7 +99,7 @@ REGLAS:
 - Adapta las recetas a las restricciones alimentarias indicadas.
 - Los pasos deben ser claros y concisos.
 
-Responde ÚNICAMENTE con un JSON válido en este formato exacto (sin texto adicional):
+Responde con un JSON válido con este formato:
 {
   "recipes": [
     {
@@ -83,22 +124,22 @@ Responde ÚNICAMENTE con un JSON válido en este formato exacto (sin texto adici
       ],
       temperature: 0.7,
       max_tokens: 4096,
+      response_format: { type: "json_object" },
     });
 
     const responseText = chatCompletion.choices[0]?.message?.content || "";
-    console.log("Groq recipes response length:", responseText.length);
+    console.log("Groq recipes response (first 300 chars):", responseText.substring(0, 300));
 
-    // Extract JSON from response
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error("Could not parse recipes JSON:", responseText);
+    const jsonString = extractJSON(responseText);
+    if (!jsonString) {
+      console.error("Could not extract JSON from response:", responseText);
       return NextResponse.json(
         { error: "No se pudo parsear la respuesta de IA" },
         { status: 500 }
       );
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed = JSON.parse(jsonString);
 
     return NextResponse.json({ recipes: parsed.recipes || [] });
   } catch (error: unknown) {

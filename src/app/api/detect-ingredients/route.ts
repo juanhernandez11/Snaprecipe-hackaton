@@ -3,6 +3,38 @@ import Groq from "groq-sdk";
 
 export const maxDuration = 30;
 
+function extractJSON(text: string): string | null {
+  // Remove <think>...</think> blocks if present
+  const cleaned = text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+
+  // Try balanced brace extraction
+  let depth = 0;
+  let start = -1;
+  for (let i = 0; i < cleaned.length; i++) {
+    if (cleaned[i] === "{") {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (cleaned[i] === "}") {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        const candidate = cleaned.substring(start, i + 1);
+        if (candidate.includes('"ingredients"')) {
+          return candidate;
+        }
+      }
+    }
+  }
+
+  // Fallback: first { to last }
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    return cleaned.substring(firstBrace, lastBrace + 1);
+  }
+
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     if (!process.env.GROQ_API_KEY) {
@@ -54,7 +86,7 @@ IMPORTANTE:
 - Sé específico (ej: "tomate rojo" en vez de solo "tomate" si puedes distinguirlo).
 - Si ves envases o productos, menciona el producto (ej: "leche", "salsa de soya").
 
-Responde ÚNICAMENTE con un JSON válido en este formato exacto:
+Responde con un JSON válido en este formato:
 {"ingredients": ["ingrediente1", "ingrediente2", "ingrediente3"]}`,
             },
             {
@@ -68,22 +100,22 @@ Responde ÚNICAMENTE con un JSON válido en este formato exacto:
       ],
       temperature: 0.3,
       max_tokens: 1024,
+      response_format: { type: "json_object" },
     });
 
     const responseText = chatCompletion.choices[0]?.message?.content || "";
-    console.log("Groq response:", responseText.substring(0, 200));
+    console.log("Groq vision response (first 300 chars):", responseText.substring(0, 300));
 
-    // Extract JSON from response
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error("Could not parse JSON from response:", responseText);
+    const jsonString = extractJSON(responseText);
+    if (!jsonString) {
+      console.error("Could not extract JSON from response:", responseText);
       return NextResponse.json(
         { error: "No se pudo parsear la respuesta de IA" },
         { status: 500 }
       );
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed = JSON.parse(jsonString);
     const ingredients: string[] = parsed.ingredients || [];
 
     return NextResponse.json({ ingredients });
@@ -91,7 +123,6 @@ Responde ÚNICAMENTE con un JSON válido en este formato exacto:
     const err = error as Error & { status?: number; message?: string };
     console.error("Error detecting ingredients:", err.message || err);
 
-    // Provide more specific error messages
     if (err.status === 401) {
       return NextResponse.json(
         { error: "API key inválida. Verifica tu configuración." },
