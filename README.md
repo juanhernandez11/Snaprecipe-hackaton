@@ -1,36 +1,137 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📸 SnapRecipe - Escanea tu nevera, obtén recetas
 
-## Getting Started
+> Hackathon Kiro 2026
 
-First, run the development server:
+## 🎯 Problema
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Llegas a casa cansado, abres la nevera y no sabes qué cocinar con lo que tienes. Terminas pidiendo comida a domicilio o desperdiciando ingredientes.
+
+## 💡 Solución
+
+**SnapRecipe** usa la cámara de tu dispositivo para fotografiar los ingredientes que tienes. La app los identifica con IA y te sugiere recetas personalizadas según tus preferencias, tiempo disponible y restricciones alimentarias.
+
+## 🚀 Demo en línea
+
+🔗 [snap-recipe.vercel.app](https://snap-recipe.vercel.app)
+
+## ✨ Características
+
+- 📷 **Captura de imagen** - Toma una foto o sube una imagen de tus ingredientes
+- 🤖 **Detección con IA** - Identifica automáticamente los ingredientes usando visión artificial
+- ✏️ **Edición manual** - Revisa y ajusta los ingredientes detectados
+- ⚙️ **Personalización** - Configura tiempo disponible, restricciones alimentarias y tipo de cocina
+- 🍳 **Recetas inteligentes** - Genera 3 recetas personalizadas con pasos detallados
+- 📱 **Mobile-first** - Diseñado para usarse desde el celular
+
+## 🏗️ Arquitectura
+
+```
+┌─────────────────────────────────────────────────┐
+│                   Frontend                       │
+│          Next.js + React + TailwindCSS          │
+│                                                  │
+│  ┌──────────┐  ┌───────────┐  ┌─────────────┐  │
+│  │ Captura  │→ │ Revisión  │→ │Preferencias │  │
+│  │ de imagen│  │ingredientes│  │  usuario    │  │
+│  └──────────┘  └───────────┘  └─────────────┘  │
+└────────────────────────┬────────────────────────┘
+                         │ API Routes
+┌────────────────────────▼────────────────────────┐
+│                   Backend                        │
+│             Next.js API Routes                   │
+│                                                  │
+│  ┌──────────────────┐  ┌─────────────────────┐  │
+│  │/api/detect-      │  │/api/generate-       │  │
+│  │  ingredients     │  │  recipes            │  │
+│  └────────┬─────────┘  └──────────┬──────────┘  │
+└───────────┼────────────────────────┼────────────┘
+            │                        │
+┌───────────▼────────────────────────▼────────────┐
+│                  Groq API                        │
+│        llama-4-scout-17b-16e-instruct           │
+│         (Vision + Text Generation)               │
+└─────────────────────────────────────────────────┘
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Stack Tecnológico
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Tecnología | Uso |
+|---|---|
+| **Next.js 16** | Framework fullstack (App Router) |
+| **React 19** | UI Components |
+| **TypeScript** | Type safety |
+| **TailwindCSS 4** | Estilos |
+| **Groq API** | IA (Vision + Generación de texto) |
+| **Vercel** | Despliegue |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📦 Instalación local
 
-## Learn More
+```bash
+# Clonar repositorio
+git clone https://github.com/tu-usuario/snap-recipe.git
+cd snap-recipe
 
-To learn more about Next.js, take a look at the following resources:
+# Instalar dependencias
+npm install
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Configurar variables de entorno
+cp .env.example .env.local
+# Editar .env.local y agregar tu GROQ_API_KEY
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Ejecutar en desarrollo
+npm run dev
+```
 
-## Deploy on Vercel
+Abrir [http://localhost:3000](http://localhost:3000) en tu navegador.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🔑 Variables de entorno
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Variable | Descripción |
+|---|---|
+| `GROQ_API_KEY` | API Key de Groq ([console.groq.com](https://console.groq.com)) |
+
+## 📱 Flujo de uso
+
+1. **Captura** → Toma una foto de tus ingredientes o sube una imagen
+2. **Revisión** → La IA detecta los ingredientes, puedes editar la lista
+3. **Preferencias** → Elige tiempo, restricciones y tipo de cocina
+4. **Recetas** → Obtén 3 recetas personalizadas con pasos detallados
+
+## 🧑‍💻 Estructura del proyecto
+
+```
+snap-recipe/
+├── src/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── detect-ingredients/route.ts   # API: Detección con IA Vision
+│   │   │   └── generate-recipes/route.ts     # API: Generación de recetas
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   └── page.tsx                          # Página principal (flujo)
+│   └── components/
+│       ├── Header.tsx
+│       ├── ImageCapture.tsx                  # Captura/subida de imagen
+│       ├── IngredientsReview.tsx             # Revisión de ingredientes
+│       ├── Preferences.tsx                   # Preferencias del usuario
+│       └── RecipeResults.tsx                 # Visualización de recetas
+├── .env.example
+├── package.json
+└── README.md
+```
+
+## 🚀 Despliegue
+
+El proyecto está desplegado en **Vercel**:
+
+1. Conecta tu repositorio de GitHub a Vercel
+2. Agrega la variable de entorno `GROQ_API_KEY`
+3. Deploy automático con cada push
+
+## 👥 Equipo
+
+- Desarrollado para el **Hackathon Kiro 2026**
+
+## 📄 Licencia
+
+MIT

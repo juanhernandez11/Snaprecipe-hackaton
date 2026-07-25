@@ -1,65 +1,178 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import ImageCapture from "@/components/ImageCapture";
+import IngredientsReview from "@/components/IngredientsReview";
+import Preferences from "@/components/Preferences";
+import RecipeResults from "@/components/RecipeResults";
+import Header from "@/components/Header";
+
+export type AppStep = "capture" | "ingredients" | "preferences" | "recipes";
+
+export interface Recipe {
+  name: string;
+  time: string;
+  difficulty: string;
+  servings: string;
+  ingredients: string[];
+  steps: string[];
+  tip: string;
+}
+
+export interface UserPreferences {
+  time: string;
+  dietary: string[];
+  cuisine: string;
+}
 
 export default function Home() {
+  const [step, setStep] = useState<AppStep>("capture");
+  const [imageBase64, setImageBase64] = useState<string>("");
+  const [ingredients, setIngredients] = useState<string[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>("");
+
+  const handleImageCaptured = async (base64: string) => {
+    setImageBase64(base64);
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/detect-ingredients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: base64 }),
+      });
+
+      if (!res.ok) throw new Error("Error al detectar ingredientes");
+
+      const data = await res.json();
+      setIngredients(data.ingredients);
+      setStep("ingredients");
+    } catch (err) {
+      setError("No se pudieron detectar los ingredientes. Intenta de nuevo.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleIngredientsConfirmed = (confirmedIngredients: string[]) => {
+    setIngredients(confirmedIngredients);
+    setStep("preferences");
+  };
+
+  const handlePreferencesSubmit = async (prefs: UserPreferences) => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/generate-recipes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ingredients, preferences: prefs }),
+      });
+
+      if (!res.ok) throw new Error("Error al generar recetas");
+
+      const data = await res.json();
+      setRecipes(data.recipes);
+      setStep("recipes");
+    } catch (err) {
+      setError("No se pudieron generar las recetas. Intenta de nuevo.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReset = () => {
+    setStep("capture");
+    setImageBase64("");
+    setIngredients([]);
+    setRecipes([]);
+    setError("");
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen">
+      <Header />
+
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        {/* Progress indicator */}
+        <div className="flex items-center justify-center gap-2 mb-8">
+          {(["capture", "ingredients", "preferences", "recipes"] as AppStep[]).map(
+            (s, i) => (
+              <div key={s} className="flex items-center gap-2">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                    step === s
+                      ? "bg-orange-500 text-white scale-110"
+                      : (["capture", "ingredients", "preferences", "recipes"].indexOf(step) > i)
+                      ? "bg-green-500 text-white"
+                      : "bg-gray-200 text-gray-500"
+                  }`}
+                >
+                  {["capture", "ingredients", "preferences", "recipes"].indexOf(step) > i ? "✓" : i + 1}
+                </div>
+                {i < 3 && (
+                  <div
+                    className={`w-8 h-0.5 ${
+                      ["capture", "ingredients", "preferences", "recipes"].indexOf(step) > i
+                        ? "bg-green-500"
+                        : "bg-gray-200"
+                    }`}
+                  />
+                )}
+              </div>
+            )
+          )}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+
+        {/* Error message */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-center">
+            {error}
+          </div>
+        )}
+
+        {/* Loading overlay */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="w-16 h-16 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin mb-4" />
+            <p className="text-gray-600 text-lg">
+              {step === "capture"
+                ? "Analizando imagen con IA..."
+                : "Generando recetas personalizadas..."}
+            </p>
+          </div>
+        )}
+
+        {/* Steps */}
+        {!loading && step === "capture" && (
+          <ImageCapture onImageCaptured={handleImageCaptured} />
+        )}
+
+        {!loading && step === "ingredients" && (
+          <IngredientsReview
+            ingredients={ingredients}
+            onConfirm={handleIngredientsConfirmed}
+            onBack={() => setStep("capture")}
+          />
+        )}
+
+        {!loading && step === "preferences" && (
+          <Preferences
+            onSubmit={handlePreferencesSubmit}
+            onBack={() => setStep("ingredients")}
+          />
+        )}
+
+        {!loading && step === "recipes" && (
+          <RecipeResults recipes={recipes} onReset={handleReset} />
+        )}
+      </div>
+    </main>
   );
 }
