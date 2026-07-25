@@ -12,7 +12,7 @@ Llegas a casa cansado, abres la nevera y no sabes qué cocinar con lo que tienes
 
 ## 🚀 Demo en línea
 
-🔗 [snaprecipe-hackaton.vercel.app](snaprecipe-hackaton.vercel.app)
+🔗 (snaprecipe-hackaton.vercel.app)
 
 ## ✨ Características
 
@@ -68,7 +68,7 @@ Llegas a casa cansado, abres la nevera y no sabes qué cocinar con lo que tienes
 
 ```bash
 # Clonar repositorio
-git clone https://github.com/tu-usuario/snap-recipe.git
+git clone https://github.com/juanhernandez11/snap-recipe.git
 cd snap-recipe
 
 # Instalar dependencias
@@ -131,6 +131,7 @@ El proyecto está desplegado en **Vercel**:
 ## 👥 Equipo
 
 - Desarrollado para el **Hackathon Kiro 2026**
+- Juan Ramon Moreno Bravo -Equipo 700
 
 ## 📄 Licencia
 
