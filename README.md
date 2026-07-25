@@ -12,7 +12,7 @@ Llegas a casa cansado, abres la nevera y no sabes qué cocinar con lo que tienes
 
 ## 🚀 Demo en línea
 
-🔗 [snap-recipe.vercel.app](https://snap-recipe.vercel.app)
+🔗 [snaprecipe-hackaton.vercel.app](snaprecipe-hackaton.vercel.app)
 
 ## ✨ Características
 
