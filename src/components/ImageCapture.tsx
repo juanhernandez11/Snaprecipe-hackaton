@@ -6,27 +6,79 @@ interface Props {
   onImageCaptured: (base64: string) => void;
 }
 
+function compressImage(file: File, maxWidth: number = 1024, quality: number = 0.7): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        // Resize if too large
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("No se pudo crear contexto canvas"));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convert to base64 JPEG with compression
+        const base64 = canvas.toDataURL("image/jpeg", quality);
+        resolve(base64);
+      };
+      img.onerror = () => reject(new Error("Error al cargar imagen"));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error("Error al leer archivo"));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function ImageCapture({ onImageCaptured }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string>("");
+  const [originalFile, setOriginalFile] = useState<File | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setOriginalFile(file);
+
     const reader = new FileReader();
     reader.onloadend = () => {
-      const base64 = reader.result as string;
-      setPreview(base64);
+      setPreview(reader.result as string);
     };
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = () => {
-    if (preview) {
+  const handleSubmit = async () => {
+    if (!originalFile) return;
+
+    try {
+      // Compress image before sending (max 1024px wide, 70% quality JPEG)
+      const compressedBase64 = await compressImage(originalFile, 1024, 0.7);
       // Remove the data:image/...;base64, prefix
-      const base64Data = preview.split(",")[1];
+      const base64Data = compressedBase64.split(",")[1];
       onImageCaptured(base64Data);
+    } catch (err) {
+      console.error("Error compressing image:", err);
+      // Fallback: send original
+      if (preview) {
+        const base64Data = preview.split(",")[1];
+        onImageCaptured(base64Data);
+      }
     }
   };
 
@@ -54,7 +106,7 @@ export default function ImageCapture({ onImageCaptured }: Props) {
               Toca para tomar una foto o seleccionar imagen
             </p>
             <p className="text-sm text-gray-400">
-              Soporta JPG, PNG • Máximo 10MB
+              Soporta JPG, PNG • Se comprime automáticamente
             </p>
           </div>
         </div>
@@ -69,6 +121,7 @@ export default function ImageCapture({ onImageCaptured }: Props) {
             <button
               onClick={() => {
                 setPreview("");
+                setOriginalFile(null);
                 if (fileInputRef.current) fileInputRef.current.value = "";
               }}
               className="absolute top-3 right-3 bg-black/50 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-black/70 transition-colors"

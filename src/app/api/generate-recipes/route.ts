@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+export const maxDuration = 30;
 
 export async function POST(request: NextRequest) {
   try {
+    if (!process.env.GROQ_API_KEY) {
+      console.error("GROQ_API_KEY is not configured");
+      return NextResponse.json(
+        { error: "API key no configurada" },
+        { status: 500 }
+      );
+    }
+
+    const groq = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
+    });
+
     const { ingredients, preferences } = await request.json();
 
     if (!ingredients || ingredients.length === 0) {
@@ -76,10 +86,12 @@ Responde ÚNICAMENTE con un JSON válido en este formato exacto (sin texto adici
     });
 
     const responseText = chatCompletion.choices[0]?.message?.content || "";
+    console.log("Groq recipes response length:", responseText.length);
 
     // Extract JSON from response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      console.error("Could not parse recipes JSON:", responseText);
       return NextResponse.json(
         { error: "No se pudo parsear la respuesta de IA" },
         { status: 500 }
@@ -89,10 +101,25 @@ Responde ÚNICAMENTE con un JSON válido en este formato exacto (sin texto adici
     const parsed = JSON.parse(jsonMatch[0]);
 
     return NextResponse.json({ recipes: parsed.recipes || [] });
-  } catch (error) {
-    console.error("Error generating recipes:", error);
+  } catch (error: unknown) {
+    const err = error as Error & { status?: number; message?: string };
+    console.error("Error generating recipes:", err.message || err);
+
+    if (err.status === 401) {
+      return NextResponse.json(
+        { error: "API key inválida. Verifica tu configuración." },
+        { status: 500 }
+      );
+    }
+    if (err.status === 429) {
+      return NextResponse.json(
+        { error: "Demasiadas solicitudes. Espera un momento e intenta de nuevo." },
+        { status: 429 }
+      );
+    }
+
     return NextResponse.json(
-      { error: "Error al generar las recetas" },
+      { error: `Error al generar recetas: ${err.message || "Error desconocido"}` },
       { status: 500 }
     );
   }

@@ -45,13 +45,17 @@ export default function Home() {
         body: JSON.stringify({ image: base64 }),
       });
 
-      if (!res.ok) throw new Error("Error al detectar ingredientes");
-
       const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Error al detectar ingredientes");
+      }
+
       setIngredients(data.ingredients);
       setStep("ingredients");
     } catch (err) {
-      setError("No se pudieron detectar los ingredientes. Intenta de nuevo.");
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      setError(message);
       console.error(err);
     } finally {
       setLoading(false);
@@ -74,13 +78,17 @@ export default function Home() {
         body: JSON.stringify({ ingredients, preferences: prefs }),
       });
 
-      if (!res.ok) throw new Error("Error al generar recetas");
-
       const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Error al generar recetas");
+      }
+
       setRecipes(data.recipes);
       setStep("recipes");
     } catch (err) {
-      setError("No se pudieron generar las recetas. Intenta de nuevo.");
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      setError(message);
       console.error(err);
     } finally {
       setLoading(false);
